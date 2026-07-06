@@ -64,6 +64,15 @@ export function listTerminals(db: Database, workspace: string): TerminalRow[] {
   return db.query<TerminalRow, [string]>("SELECT * FROM terminal WHERE workspace = ? ORDER BY created_at").all(workspace);
 }
 
+// Tear down EVERYTHING a workspace owns (uninstall). Ordered leaf-first; a terminal serial is freed for
+// re-registration and no inbound routing, reservation, or encrypted secret survives the api-key revocation.
+export function purgeWorkspace(db: Database, workspace: string): void {
+  db.query("DELETE FROM reservation WHERE workspace = ?").run(workspace);
+  db.query("DELETE FROM unmapped_payment WHERE workspace = ?").run(workspace);
+  db.query("DELETE FROM terminal WHERE workspace = ?").run(workspace);
+  db.query("DELETE FROM install WHERE workspace = ?").run(workspace);
+}
+
 export function reservationForOrder(db: Database, workspace: string, orderId: string): ReservationRow | null {
   return db
     .query<ReservationRow, [string, string]>(

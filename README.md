@@ -35,13 +35,44 @@ bun install
 bun run dev          # api on :8080 (serves the UI in prod)
 bun run --filter '@ss-moniepoint/ui' dev   # vite dev server for the UI
 bun run typecheck
-bun test ./api       # includes the Level-2 boundary gate
+bun test ./api       # includes the Level-2 boundary gate + tenant + platform-auth suites
+bun run demo         # end-to-end loop against mocks: provision → connect → reserve → webhook → paid → uninstall
 ```
+
+## Auth & env
+
+The app trusts the platform via **asymmetric JWTs** (the platform signs with its private key; the app
+only ever holds the public key, so it can verify but never forge). Two token purposes, both `aud` =
+this app so app A's token can't be replayed to app B:
+
+- **provision** (one-time, server-to-server) — the platform delivers a workspace's auto-minted Sentralbee
+  api key to `POST /install/provision`; also authorises `POST /install/uninstall`. The `jti` is consumed
+  in `consumed_jti` to block replay.
+- **session** (short-lived) — the embed UI + storefront present it on `/install/connect`, `/admin/*`, and
+  `/checkout/*`. The workspace comes from the verified claim, never a query param or body.
+
+| Env var | Purpose |
+| --- | --- |
+| `MONIEPOINT_APP_KEY` | AES-256-GCM key for at-rest secret encryption. **Fails closed** if unset. |
+| `PLATFORM_JWT_PUBLIC_KEY` | Platform's Ed25519 **public** key (SPKI PEM). Fails closed if unset. |
+| `MONIEPOINT_APP_AUDIENCE` | Expected `aud` on platform tokens (default `moniepoint-app`). |
+| `MONIEPOINT_APP_PUBLIC_URL` | Public base URL; the webhook subscription is created at `…/webhook`. |
+| `SENTRALBEE_API_URL` | Public commerce API base for the mark-paid write. |
+| `MONIEPOINT_API_BASE` / `MONIEPOINT_AUTH_URL` | Moniepoint endpoints (partner-gated; confirm before go-live). |
 
 ## Status
 
-Skeleton. Routes/datastore/UI are stubs; the Phase-2 build units flesh them out
-(p2-app-scaffold, p2-publicapi-client, p2-install-connect, p2-reservation,
-p2-webhook-reconciler, p2-checkout-descriptor, p2-admin-ui). The swarm's hermetic floor
-needs a **Bun/Vite profile** for this repo (bun install --frozen-lockfile · bun test · tsc ·
-vite build) — it is not a `go-service`.
+**Built + tested** (28 tests, `tsc` clean, `bun run demo` green end-to-end):
+- Reconciliation loop — unique-amount reservation, fail-closed HMAC webhook, suspense/clearing-house
+  ledger, idempotent mark-paid to the public API.
+- **Tenant-safe data layer** — global-unique terminal serials (no squatting), per-tenant txn idempotency,
+  workspace-scoped matcher/suspense/reservations.
+- **Platform-token auth (Track B1)** — asymmetric provision + session JWTs, one-time provision, session
+  gate on connect/admin/checkout, `/uninstall` purge + Moniepoint subscription teardown. Embed UI carries
+  the session token via the host bridge (`?token=` in dev).
+
+**Next (Track B2, platform-side):** app-catalog trust anchor, auto-mint on consent, asymmetric token
+signing + server-to-server provision dispatcher, consent screen, session-token exchange, separate app-key
+quota bucket, uninstall orchestration — across `ss-workspace-service` + `colossal-db` + `ss-platform-app`.
+The swarm's hermetic floor uses a **Bun/Vite profile** for this repo (bun install --frozen-lockfile · tsc
+· bun test · vite build) — it is not a `go-service`.

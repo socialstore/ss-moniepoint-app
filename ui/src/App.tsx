@@ -1,15 +1,16 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { ready } from "./bridge";
-import { api, naira, workspace, type AppConfig, type Terminal, type Unmapped } from "./api";
+import { api, naira, sessionToken, workspaceFromToken, type AppConfig, type Terminal, type Unmapped } from "./api";
 
 type Tab = "connect" | "terminals" | "clearing";
 
 export function App() {
+  const [tab, setTab] = useState<Tab>("connect");
+  const [ws, setWs] = useState<string | undefined>(undefined); // undefined = resolving the session token
   useEffect(() => {
     ready();
+    sessionToken().then((t) => setWs(t ? workspaceFromToken(t) : ""));
   }, []);
-  const [tab, setTab] = useState<Tab>("connect");
-  const ws = workspace();
 
   return (
     <main style={S.main}>
@@ -25,8 +26,10 @@ export function App() {
         ))}
       </nav>
       <section style={S.body}>
-        {!ws ? (
-          <p style={S.dim}>Open this app from your Sentralbee dashboard — no workspace in context.</p>
+        {ws === undefined ? (
+          <p style={S.dim}>Loading…</p>
+        ) : !ws ? (
+          <p style={S.dim}>Open this app from your Sentralbee dashboard — no session in context.</p>
         ) : tab === "connect" ? (
           <Connect />
         ) : tab === "terminals" ? (
@@ -41,7 +44,7 @@ export function App() {
 
 function Connect() {
   const [cfg, setCfg] = useState<AppConfig | null>(null);
-  const [f, setF] = useState({ businessId: "", moniepointClientId: "", moniepointClientSecret: "", sentralbeeKey: "" });
+  const [f, setF] = useState({ businessId: "", moniepointClientId: "", moniepointClientSecret: "" });
   const [msg, setMsg] = useState("");
   const load = () => api.config().then(setCfg).catch((e) => setMsg(String(e.message)));
   useEffect(() => {
@@ -52,7 +55,7 @@ function Connect() {
     setMsg("connecting…");
     try {
       const res = await api.connect(f);
-      setF({ ...f, moniepointClientSecret: "", sentralbeeKey: "" });
+      setF({ ...f, moniepointClientSecret: "" });
       const w = res.webhookSetup;
       setMsg(w?.ok ? `connected · webhook subscription created (${w.subscriptionId || "ok"})` : `saved · webhook setup: ${w?.error ?? "pending"}`);
       load();
@@ -71,8 +74,10 @@ function Connect() {
       <Field label="Moniepoint business id" v={f.businessId} on={(v) => setF({ ...f, businessId: v })} />
       <Field label="Moniepoint API client id" v={f.moniepointClientId} on={(v) => setF({ ...f, moniepointClientId: v })} />
       <Field label="Moniepoint API client secret" v={f.moniepointClientSecret} on={(v) => setF({ ...f, moniepointClientSecret: v })} secret />
-      <Field label="Sentralbee app API key (sale-payment)" v={f.sentralbeeKey} on={(v) => setF({ ...f, sentralbeeKey: v })} secret />
-      <p style={S.dim}>The app sets up the Moniepoint webhook subscription for you — no webhook secret to copy.</p>
+      <p style={S.dim}>
+        Your Sentralbee API access was provisioned automatically on install — the app also creates the
+        Moniepoint webhook subscription for you, so there are no keys or secrets to copy.
+      </p>
       <button style={S.primary} onClick={save}>
         Connect
       </button>

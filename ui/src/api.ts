@@ -1,13 +1,36 @@
-// The admin UI is served by the app's own API (same origin), so calls are relative. The workspace
-// comes from the embed URL for now; the platform session token replaces it in a later pass.
+import { requestSessionToken } from "./bridge";
+
+// The admin UI is served by the app's own API (same origin), so calls are relative. Auth is a short-lived
+// platform SESSION TOKEN obtained from the embed host (or a ?token= param in dev) and sent as a Bearer
+// token. The app derives the workspace from the verified token — the UI never sends a workspace and never
+// holds an api key.
 const API = "";
 
-export function workspace(): string {
-  return new URLSearchParams(location.search).get("workspace") ?? "";
+let _tokenPromise: Promise<string> | null = null;
+export function sessionToken(): Promise<string> {
+  if (!_tokenPromise) {
+    const fromUrl = new URLSearchParams(location.search).get("token");
+    _tokenPromise = fromUrl ? Promise.resolve(fromUrl) : requestSessionToken();
+  }
+  return _tokenPromise;
+}
+
+/** Best-effort, DISPLAY-ONLY decode of the workspace from the token (never trusted for authz). */
+export function workspaceFromToken(token: string): string {
+  try {
+    const payload = JSON.parse(atob((token.split(".")[1] ?? "").replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.wid === "string" ? payload.wid : "";
+  } catch {
+    return "";
+  }
 }
 
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(API + path, { headers: { "content-type": "application/json" }, ...init });
+  const token = await sessionToken();
+  const res = await fetch(API + path, {
+    ...init,
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}`, ...(init?.headers ?? {}) },
+  });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) throw new Error(data.error ?? res.statusText);
   return data;
@@ -44,14 +67,11 @@ export interface Unmapped {
 }
 
 export const api = {
-  config: () => j<AppConfig>(`/admin/config?workspace=${encodeURIComponent(workspace())}`),
+  config: () => j<AppConfig>(`/admin/config`),
   connect: (body: Record<string, unknown>) =>
-    j<{ ok: boolean; webhookSetup?: WebhookSetup }>(`/install/connect`, {
-      method: "POST",
-      body: JSON.stringify({ workspace: workspace(), ...body }),
-    }),
-  terminals: () => j<{ terminals: Terminal[] }>(`/admin/terminals?workspace=${encodeURIComponent(workspace())}`),
-  clearingHouse: () => j<{ unmapped: Unmapped[] }>(`/admin/clearing-house?workspace=${encodeURIComponent(workspace())}`),
+    j<{ ok: boolean; webhookSetup?: WebhookSetup }>(`/install/connect`, { method: "POST", body: JSON.stringify(body) }),
+  terminals: () => j<{ terminals: Terminal[] }>(`/admin/terminals`),
+  clearingHouse: () => j<{ unmapped: Unmapped[] }>(`/admin/clearing-house`),
   resolve: (id: string, orderId: string) =>
     j<{ ok: boolean }>(`/admin/clearing-house/${id}/resolve`, { method: "POST", body: JSON.stringify({ orderId }) }),
 };

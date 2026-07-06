@@ -15,6 +15,7 @@ export interface WebhookSubscription {
 export interface MoniepointClient {
   authenticate(clientId: string, clientSecret: string): Promise<string>; // -> bearer token
   createWebhookSubscription(token: string, webhookUrl: string, events?: string[]): Promise<WebhookSubscription>;
+  deleteWebhookSubscription(token: string, subscriptionId: string): Promise<void>;
 }
 
 const DEFAULT_EVENTS = ["V1_POS_TRANSFER_TRANSACTION", "V1_TRANSFER_TRANSACTION"];
@@ -45,6 +46,14 @@ export function httpMoniepoint(cfg?: { apiBase?: string; authUrl?: string }): Mo
       const secret = data.secret ?? data.signingSecret;
       if (!secret) throw new Error("moniepoint subscription returned no signing secret");
       return { subscriptionId: data.subscriptionId ?? data.id ?? "", secret };
+    },
+    async deleteWebhookSubscription(token, subscriptionId) {
+      if (!subscriptionId) return;
+      const res = await fetch(`${apiBase}/v1/webhooks/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+        method: "DELETE",
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (!res.ok && res.status !== 404) throw new Error(`moniepoint delete subscription failed (${res.status})`);
     },
   };
 }

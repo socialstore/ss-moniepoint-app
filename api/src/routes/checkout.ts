@@ -2,28 +2,30 @@ import { Hono } from "hono";
 import { getDb } from "../store/db";
 import { reserve } from "../domain/reservation";
 import { reservationForOrder } from "../store/repo";
+import { sessionAuth, type SessionVars } from "../auth/platform";
 
-export const checkout = new Hono();
+// Storefront-facing. Every route is session-authed: the workspace comes from the VERIFIED token, never
+// the body — so a caller can't exhaust another tenant's reservation pool or read another tenant's status.
+// Money is minor units (kobo).
+export const checkout = new Hono<{ Variables: SessionVars }>();
+checkout.use("*", sessionAuth);
 
-// NOTE: workspace is taken from the request for now; the storefront call is authenticated by the
-// platform session token in a later pass (p2 auth). Money is minor units (kobo).
-
-// POST /checkout/orders/:id/reserve  { workspace, terminalSerial, amountMinor, currency? }
+// POST /checkout/orders/:id/reserve  { terminalSerial, amountMinor, currency? }
 checkout.post("/orders/:id/reserve", async (c) => {
   const orderId = c.req.param("id");
+  const workspace = c.get("workspace");
   const body = (await c.req.json().catch(() => ({}))) as {
-    workspace?: string;
     terminalSerial?: string;
     amountMinor?: number;
     currency?: string;
   };
-  if (!body.workspace || !body.terminalSerial || typeof body.amountMinor !== "number") {
-    return c.json({ error: "workspace, terminalSerial, amountMinor required" }, 400);
+  if (!body.terminalSerial || typeof body.amountMinor !== "number") {
+    return c.json({ error: "terminalSerial, amountMinor required" }, 400);
   }
   try {
     const intent = reserve(
       { db: getDb(), now: Date.now() },
-      body.workspace,
+      workspace,
       orderId,
       body.terminalSerial,
       body.amountMinor,
@@ -35,11 +37,10 @@ checkout.post("/orders/:id/reserve", async (c) => {
   }
 });
 
-// GET /checkout/orders/:id/status?workspace=...  — reservation status (matched => paid)
+// GET /checkout/orders/:id/status  — reservation status (matched => paid), scoped to the token's workspace
 checkout.get("/orders/:id/status", (c) => {
   const orderId = c.req.param("id");
-  const workspace = c.req.query("workspace");
-  if (!workspace) return c.json({ error: "workspace required" }, 400);
+  const workspace = c.get("workspace");
   const r = reservationForOrder(getDb(), workspace, orderId);
   if (!r) return c.json({ status: "none" });
   return c.json({

@@ -4,17 +4,18 @@ import { getInstall, listTerminals } from "../store/repo";
 import { getUnmapped, listUnmapped, markUnmappedResolved } from "../domain/suspense";
 import { decryptSecret } from "../lib/cypher";
 import { httpSentralbee } from "../sentralbee/client";
+import { sessionAuth, type SessionVars } from "../auth/platform";
 
 const SENTRALBEE_API = Bun.env.SENTRALBEE_API_URL ?? "https://api.sentralbee.app";
 
-// The embedded admin backend. NOTE: workspace is via query for now; the platform session token
-// (verified against the platform JWKS) replaces it in a later pass so the iframe never holds a key.
-export const admin = new Hono();
+// The embedded admin backend. Every route is session-authed: the workspace is taken from the VERIFIED
+// session token (minted by the platform for the embed), so the iframe never holds an api key and can
+// only ever act as its own tenant.
+export const admin = new Hono<{ Variables: SessionVars }>();
+admin.use("*", sessionAuth);
 
 admin.get("/config", (c) => {
-  const workspace = c.req.query("workspace");
-  if (!workspace) return c.json({ error: "workspace required" }, 400);
-  const i = getInstall(getDb(), workspace);
+  const i = getInstall(getDb(), c.get("workspace"));
   return c.json({
     configured: !!i?.sentralbee_key_enc,
     businessId: i?.business_id ?? null,
@@ -25,24 +26,19 @@ admin.get("/config", (c) => {
 });
 
 admin.get("/terminals", (c) => {
-  const workspace = c.req.query("workspace");
-  if (!workspace) return c.json({ error: "workspace required" }, 400);
-  return c.json({ terminals: listTerminals(getDb(), workspace) });
+  return c.json({ terminals: listTerminals(getDb(), c.get("workspace")) });
 });
 
 admin.get("/clearing-house", (c) => {
-  const workspace = c.req.query("workspace");
-  if (!workspace) return c.json({ error: "workspace required" }, 400);
-  return c.json({ unmapped: listUnmapped(getDb(), workspace) });
+  return c.json({ unmapped: listUnmapped(getDb(), c.get("workspace")) });
 });
 
-// POST /admin/clearing-house/:id/resolve?workspace=W { orderId } — manually bind a suspense payment
-// to an order. The suspense row + the install are BOTH scoped to the workspace, so a leaked row id
-// can never be resolved cross-tenant. (Track B: workspace comes from a verified session token, not ?query.)
+// POST /admin/clearing-house/:id/resolve { orderId } — manually bind a suspense payment to an order.
+// The suspense row + the install are BOTH scoped to the token's workspace, so a leaked row id can never
+// be resolved cross-tenant.
 admin.post("/clearing-house/:id/resolve", async (c) => {
   const id = c.req.param("id");
-  const workspace = c.req.query("workspace");
-  if (!workspace) return c.json({ error: "workspace required" }, 400);
+  const workspace = c.get("workspace");
   const body = (await c.req.json().catch(() => ({}))) as { orderId?: string };
   if (!body.orderId) return c.json({ error: "orderId required" }, 400);
 

@@ -78,6 +78,12 @@ export function migrate(d: Database): void {
       created_at         INTEGER NOT NULL,
       UNIQUE(workspace, moniepoint_txn_id)   -- idempotency scoped per tenant; a provider txn id is never a global key
     );
+
+    -- One-time-use guard for platform provision tokens (replay protection).
+    CREATE TABLE IF NOT EXISTS consumed_jti (
+      jti         TEXT PRIMARY KEY,
+      consumed_at INTEGER NOT NULL
+    );
   `);
 }
 

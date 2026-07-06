@@ -1,6 +1,7 @@
 // End-to-end demo of the Moniepoint reconciliation loop WITHOUT the full Sentralbee stack.
 // A mock stands in for the public commerce API and captures the payment-write call, so you can see
-// the whole flow — install → reserve (unique amount) → signed webhook → reconcile → mark-paid — work.
+// the whole flow — platform provision → merchant connect → reserve → signed webhook → reconcile →
+// mark-paid — work, all under the real asymmetric-JWT auth (a test keypair stands in for the platform).
 //
 //   bun run demo            (from ss-moniepoint-app/)
 //
@@ -24,6 +25,11 @@ const mock = Bun.serve({
   },
 });
 
+// A test keypair stands in for the platform: it signs provision + session tokens the app verifies.
+const { makeTestKeys, signProvision, signSession } = await import("../api/src/auth/testsign");
+const keys = await makeTestKeys();
+process.env.PLATFORM_JWT_PUBLIC_KEY = keys.publicKeyPem; // the app trusts tokens signed by this platform
+
 const { app } = await import("../api/src/app");
 const { memoryDb, setDb } = await import("../api/src/store/db");
 const { setMoniepointClient } = await import("../api/src/moniepoint/client");
@@ -38,6 +44,7 @@ const WHSEC = "whsec_from_moniepoint_subscription";
 setMoniepointClient({
   authenticate: async () => "fake-moniepoint-token",
   createWebhookSubscription: async () => ({ subscriptionId: "sub_demo", secret: WHSEC }),
+  deleteWebhookSubscription: async () => {},
 });
 
 async function jj(path: string, init?: RequestInit) {
@@ -46,35 +53,46 @@ async function jj(path: string, init?: RequestInit) {
 }
 const json = (o: unknown) => JSON.stringify(o);
 const H = { "content-type": "application/json" };
+const auth = (t: string) => ({ ...H, authorization: `Bearer ${t}` });
 
-console.log("① connect — merchant hands over Moniepoint API creds; the app creates the webhook subscription");
-console.log("  ", json(await jj("/install/connect", { method: "POST", headers: H, body: json({
-  workspace: WS, businessId: "42",
+// Tokens the platform would mint after the merchant consents in the app-store.
+const provisionTok = await signProvision(keys.privateKey, WS);
+const sessionTok = await signSession(keys.privateKey, WS);
+
+console.log("① platform provisions — auto-minted Sentralbee api key delivered server-to-server (no manual paste)");
+console.log("  ", json(await jj("/install/provision", { method: "POST", headers: auth(provisionTok), body: json({ apiKey: "sk_demo_app_key" }) })));
+
+console.log("\n② merchant connects — hands over Moniepoint API creds; the app creates the webhook subscription");
+console.log("  ", json(await jj("/install/connect", { method: "POST", headers: auth(sessionTok), body: json({
+  businessId: "42",
   moniepointClientId: "mp_client_demo", moniepointClientSecret: "mp_secret_demo",
-  sentralbeeKey: "sk_demo_app_key", webhookUrl: "https://demo-app.example/webhook",
+  webhookUrl: "https://demo-app.example/webhook",
   terminals: [{ terminalSerial: TERM, nuban: "5012345678", accountName: "ACME LTD" }],
 }) })));
 
-console.log("\n② checkout reserve — order-42, base ₦14,000.00");
-const reserve = await jj("/checkout/orders/order-42/reserve", { method: "POST", headers: H, body: json({ workspace: WS, terminalSerial: TERM, amountMinor: 1_400_000 }) });
+console.log("\n③ checkout reserve — order-42, base ₦14,000.00");
+const reserve = await jj("/checkout/orders/order-42/reserve", { method: "POST", headers: auth(sessionTok), body: json({ terminalSerial: TERM, amountMinor: 1_400_000 }) });
 console.log("  ", json(reserve.body));
 const amountMinor = (reserve.body as { intent: { amountMinor: number } }).intent.amountMinor;
 
-console.log("\n③ customer transfers the EXACT amount → signed Moniepoint webhook (APPROVED)");
+console.log("\n④ customer transfers the EXACT amount → signed Moniepoint webhook (APPROVED)");
 const payload = json({ transactionReference: "MNP-TXN-001", terminalSerial: TERM, businessId: "42", amount: amountMinor / 100, transactionStatus: "APPROVED", merchantReference: "" });
 const sig = createHmac("sha256", WHSEC).update(payload).digest("hex");
 console.log("  ", json(await jj("/webhook", { method: "POST", headers: { ...H, "moniepoint-webhook-signature": sig }, body: payload })));
 
-console.log("\n④ what the app sent to Sentralbee (the payment-write call it made):");
+console.log("\n⑤ what the app sent to Sentralbee (the payment-write call it made):");
 console.log("  ", json(captured));
 
-console.log("\n⑤ checkout status (what the storefront polls):");
-console.log("  ", json((await jj(`/checkout/orders/order-42/status?workspace=${WS}`)).body));
+console.log("\n⑥ checkout status (what the storefront polls, session-authed):");
+console.log("  ", json((await jj(`/checkout/orders/order-42/status`, { headers: auth(sessionTok) })).body));
 
-console.log("\n⑥ fail-closed — the SAME transfer with a BAD signature is rejected:");
+console.log("\n⑦ fail-closed — the SAME transfer with a BAD signature is rejected:");
 console.log("  ", json(await jj("/webhook", { method: "POST", headers: { ...H, "moniepoint-webhook-signature": "deadbeef" }, body: payload })));
 
-console.log("\n⑦ redelivery — the SAME valid webhook again is idempotent (no double-pay):");
+console.log("\n⑧ redelivery — the SAME valid webhook again is idempotent (no double-pay):");
 console.log("  ", json(await jj("/webhook", { method: "POST", headers: { ...H, "moniepoint-webhook-signature": sig }, body: payload })));
+
+console.log("\n⑨ uninstall — platform tears down the install; Moniepoint subscription deleted, all rows purged:");
+console.log("  ", json(await jj("/install/uninstall", { method: "POST", headers: auth(await signProvision(keys.privateKey, WS)), body: "{}" })));
 
 mock.stop();
