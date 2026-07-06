@@ -7,7 +7,8 @@
     "dev": "bun run --filter '@ss-moniepoint/api' dev",
     "build:ui": "bun run --filter '@ss-moniepoint/ui' build",
     "typecheck": "tsc --noEmit",
-    "test": "bun test ./api"
+    "test": "bun test ./api",
+    "demo": "bun scripts/demo.ts"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
