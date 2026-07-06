@@ -41,7 +41,7 @@ export function App() {
 
 function Connect() {
   const [cfg, setCfg] = useState<AppConfig | null>(null);
-  const [f, setF] = useState({ businessId: "", moniepointSecret: "", sentralbeeKey: "", webhookSecret: "" });
+  const [f, setF] = useState({ businessId: "", moniepointClientId: "", moniepointClientSecret: "", sentralbeeKey: "" });
   const [msg, setMsg] = useState("");
   const load = () => api.config().then(setCfg).catch((e) => setMsg(String(e.message)));
   useEffect(() => {
@@ -49,11 +49,12 @@ function Connect() {
   }, []);
 
   async function save() {
-    setMsg("saving…");
+    setMsg("connecting…");
     try {
-      await api.connect(f);
-      setF({ businessId: f.businessId, moniepointSecret: "", sentralbeeKey: "", webhookSecret: "" });
-      setMsg("saved");
+      const res = await api.connect(f);
+      setF({ ...f, moniepointClientSecret: "", sentralbeeKey: "" });
+      const w = res.webhookSetup;
+      setMsg(w?.ok ? `connected · webhook subscription created (${w.subscriptionId || "ok"})` : `saved · webhook setup: ${w?.error ?? "pending"}`);
       load();
     } catch (e) {
       setMsg("error: " + (e as Error).message);
@@ -64,15 +65,16 @@ function Connect() {
     <div>
       <p style={S.dim}>
         Status: {cfg?.configured ? "✓ connected" : "not connected"}
-        {cfg?.hasMoniepointSecret ? " · moniepoint secret set" : ""}
-        {cfg?.hasWebhookSecret ? " · webhook secret set" : ""}
+        {cfg?.hasClientCreds ? " · moniepoint creds set" : ""}
+        {cfg?.webhookConfigured ? " · webhook subscription active" : ""}
       </p>
       <Field label="Moniepoint business id" v={f.businessId} on={(v) => setF({ ...f, businessId: v })} />
-      <Field label="Moniepoint API secret" v={f.moniepointSecret} on={(v) => setF({ ...f, moniepointSecret: v })} secret />
-      <Field label="Moniepoint webhook secret" v={f.webhookSecret} on={(v) => setF({ ...f, webhookSecret: v })} secret />
+      <Field label="Moniepoint API client id" v={f.moniepointClientId} on={(v) => setF({ ...f, moniepointClientId: v })} />
+      <Field label="Moniepoint API client secret" v={f.moniepointClientSecret} on={(v) => setF({ ...f, moniepointClientSecret: v })} secret />
       <Field label="Sentralbee app API key (sale-payment)" v={f.sentralbeeKey} on={(v) => setF({ ...f, sentralbeeKey: v })} secret />
+      <p style={S.dim}>The app sets up the Moniepoint webhook subscription for you — no webhook secret to copy.</p>
       <button style={S.primary} onClick={save}>
-        Save connection
+        Connect
       </button>
       <span style={S.msg}>{msg}</span>
     </div>

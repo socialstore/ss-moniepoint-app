@@ -26,11 +26,19 @@ const mock = Bun.serve({
 
 const { app } = await import("../api/src/app");
 const { memoryDb, setDb } = await import("../api/src/store/db");
+const { setMoniepointClient } = await import("../api/src/moniepoint/client");
 setDb(memoryDb());
 
 const WS = "workspace-demo";
 const TERM = "P260678997653";
-const WHSEC = "whsec_demo";
+const WHSEC = "whsec_from_moniepoint_subscription";
+
+// Stand in for Moniepoint's API: on connect the app uses the merchant's client creds to create a
+// webhook subscription; Moniepoint returns this signing secret (the merchant never hand-copies it).
+setMoniepointClient({
+  authenticate: async () => "fake-moniepoint-token",
+  createWebhookSubscription: async () => ({ subscriptionId: "sub_demo", secret: WHSEC }),
+});
 
 async function jj(path: string, init?: RequestInit) {
   const r = await app.fetch(new Request("http://app" + path, init));
@@ -39,9 +47,11 @@ async function jj(path: string, init?: RequestInit) {
 const json = (o: unknown) => JSON.stringify(o);
 const H = { "content-type": "application/json" };
 
-console.log("① install — store creds + register a terminal");
+console.log("① connect — merchant hands over Moniepoint API creds; the app creates the webhook subscription");
 console.log("  ", json(await jj("/install/connect", { method: "POST", headers: H, body: json({
-  workspace: WS, businessId: "42", sentralbeeKey: "sk_demo_app_key", webhookSecret: WHSEC,
+  workspace: WS, businessId: "42",
+  moniepointClientId: "mp_client_demo", moniepointClientSecret: "mp_secret_demo",
+  sentralbeeKey: "sk_demo_app_key", webhookUrl: "https://demo-app.example/webhook",
   terminals: [{ terminalSerial: TERM, nuban: "5012345678", accountName: "ACME LTD" }],
 }) })));
 

@@ -13,12 +13,14 @@ export function migrate(d: Database): void {
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS install (
-      workspace              TEXT PRIMARY KEY,
-      business_id            TEXT,
-      moniepoint_secret_enc  TEXT,   -- merchant's Moniepoint API secret, encrypted with the app key
-      sentralbee_key_enc     TEXT,   -- the app-kind Sentralbee api-key used to call the public API
-      webhook_secret_enc     TEXT,   -- Moniepoint webhook signing secret (for fail-closed auth)
-      created_at             INTEGER NOT NULL
+      workspace                 TEXT PRIMARY KEY,
+      business_id               TEXT,
+      moniepoint_client_id      TEXT,   -- merchant's Moniepoint API client id
+      moniepoint_secret_enc     TEXT,   -- merchant's Moniepoint API client secret, encrypted with the app key
+      moniepoint_subscription_id TEXT,  -- the webhook subscription we created via the Moniepoint API
+      sentralbee_key_enc        TEXT,   -- the app-kind Sentralbee api-key used to call the public API
+      webhook_secret_enc        TEXT,   -- signing secret RETURNED by Moniepoint when we created the subscription
+      created_at                INTEGER NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS terminal (

@@ -4,9 +4,11 @@
 export interface InstallRow {
   workspace: string;
   business_id: string | null;
-  moniepoint_secret_enc: string | null;
+  moniepoint_client_id: string | null;
+  moniepoint_secret_enc: string | null; // client secret, encrypted
+  moniepoint_subscription_id: string | null;
   sentralbee_key_enc: string | null;
-  webhook_secret_enc: string | null;
+  webhook_secret_enc: string | null; // signing secret returned by Moniepoint on subscription
   created_at: number;
 }
 

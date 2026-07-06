@@ -18,8 +18,9 @@ admin.get("/config", (c) => {
   return c.json({
     configured: !!i?.sentralbee_key_enc,
     businessId: i?.business_id ?? null,
-    hasMoniepointSecret: !!i?.moniepoint_secret_enc,
-    hasWebhookSecret: !!i?.webhook_secret_enc,
+    hasClientCreds: !!i?.moniepoint_secret_enc,
+    webhookConfigured: !!i?.webhook_secret_enc,
+    subscriptionId: i?.moniepoint_subscription_id ?? null,
   });
 });
 

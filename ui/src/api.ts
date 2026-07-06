@@ -16,8 +16,14 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 export interface AppConfig {
   configured: boolean;
   businessId: string | null;
-  hasMoniepointSecret: boolean;
-  hasWebhookSecret: boolean;
+  hasClientCreds: boolean;
+  webhookConfigured: boolean;
+  subscriptionId: string | null;
+}
+export interface WebhookSetup {
+  ok: boolean;
+  subscriptionId?: string;
+  error?: string;
 }
 export interface Terminal {
   id: string;
@@ -40,7 +46,10 @@ export interface Unmapped {
 export const api = {
   config: () => j<AppConfig>(`/admin/config?workspace=${encodeURIComponent(workspace())}`),
   connect: (body: Record<string, unknown>) =>
-    j<{ ok: boolean }>(`/install/connect`, { method: "POST", body: JSON.stringify({ workspace: workspace(), ...body }) }),
+    j<{ ok: boolean; webhookSetup?: WebhookSetup }>(`/install/connect`, {
+      method: "POST",
+      body: JSON.stringify({ workspace: workspace(), ...body }),
+    }),
   terminals: () => j<{ terminals: Terminal[] }>(`/admin/terminals?workspace=${encodeURIComponent(workspace())}`),
   clearingHouse: () => j<{ unmapped: Unmapped[] }>(`/admin/clearing-house?workspace=${encodeURIComponent(workspace())}`),
   resolve: (id: string, orderId: string) =>

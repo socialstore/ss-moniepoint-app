@@ -1,5 +1,5 @@
-import { app } from "./app";
-import { getDb } from "./store/db";
+import { app } from './app';
+import { getDb } from './store/db';
 
 getDb(); // open + migrate the app's datastore on boot
 
