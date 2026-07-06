@@ -1,4 +1,7 @@
 import { app } from "./app";
+import { getDb } from "./store/db";
+
+getDb(); // open + migrate the app's datastore on boot
 
 const port = Number(Bun.env.PORT ?? 8080);
 
