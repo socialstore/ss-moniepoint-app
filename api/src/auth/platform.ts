@@ -16,10 +16,24 @@ const AUDIENCE = Bun.env.MONIEPOINT_APP_AUDIENCE ?? "moniepoint-app";
 let _key: KeyLike | null = null;
 async function platformKey(): Promise<KeyLike> {
   if (_key) return _key;
-  const pem = Bun.env.PLATFORM_JWT_PUBLIC_KEY;
-  if (!pem) throw new Error("PLATFORM_JWT_PUBLIC_KEY is not set — refusing to verify platform tokens");
-  _key = await importSPKI(pem.replace(/\\n/g, "\n"), ALG);
+  const raw = Bun.env.PLATFORM_JWT_PUBLIC_KEY;
+  if (!raw) throw new Error("PLATFORM_JWT_PUBLIC_KEY is not set — refusing to verify platform tokens");
+  _key = await importSPKI(decodeKeyMaterial(raw), ALG);
   return _key;
+}
+
+// Accept a PEM (raw multiline, or "\n"-escaped) OR a base64-encoded PEM — base64 is the single-line form
+// that survives secret-manager + shell-sourced env delivery, and matches how the platform signer loads.
+function decodeKeyMaterial(raw: string): string {
+  const s = raw.trim();
+  if (s.includes("-----BEGIN")) return s.replace(/\\n/g, "\n");
+  try {
+    const decoded = Buffer.from(s, "base64").toString("utf8");
+    if (decoded.includes("-----BEGIN")) return decoded;
+  } catch {
+    /* fall through */
+  }
+  return s;
 }
 
 /** Test/reset hook so tests can inject a public key without env. */
