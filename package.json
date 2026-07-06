@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "bun run --filter '@ss-moniepoint/api' dev",
     "build:ui": "bun run --filter '@ss-moniepoint/ui' build",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "tsc --noEmit",
     "test": "bun test ./api"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "@types/bun": "^1.1.14"
   }
 }

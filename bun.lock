@@ -4,6 +4,10 @@
   "workspaces": {
     "": {
       "name": "ss-moniepoint-app",
+      "devDependencies": {
+        "@types/bun": "^1.1.14",
+        "typescript": "^5.7.2",
+      },
     },
     "api": {
       "name": "@ss-moniepoint/api",

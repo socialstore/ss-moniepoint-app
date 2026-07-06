@@ -1,0 +1,18 @@
+{
+  "//": "Whole-repo typecheck for the swarm expo-app floor gate (`tsc --noEmit` at root). Covers both workspaces; api/ and ui/ keep their own tsconfig for local dev + vite build.",
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["bun"]
+  },
+  "include": ["api/src", "ui/src"]
+}
