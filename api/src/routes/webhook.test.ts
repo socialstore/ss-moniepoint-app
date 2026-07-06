@@ -1,3 +1,6 @@
+// cypher fails closed without a key; set a test key before any encrypt/decrypt runs.
+process.env.MONIEPOINT_APP_KEY ??= "test-app-key";
+
 import { test, expect } from "bun:test";
 import { memoryDb, setDb } from "../store/db";
 import { app } from "../app";

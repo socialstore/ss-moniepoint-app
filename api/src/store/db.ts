@@ -31,7 +31,10 @@ export function migrate(d: Database): void {
       account_name    TEXT,
       bank_name       TEXT NOT NULL DEFAULT 'Moniepoint MFB',
       created_at      INTEGER NOT NULL,
-      UNIQUE(workspace, terminal_serial)
+      -- GLOBALLY unique: a terminal serial resolves to exactly ONE workspace, so a webhook can never
+      -- be routed to the wrong tenant. (Connect must also verify the serial belongs to the merchant's
+      -- Moniepoint business before registering it — otherwise first-registrant squats the serial.)
+      UNIQUE(terminal_serial)
     );
 
     -- A checkout reservation: a UNIQUE payable amount held for one order on one terminal, so a
@@ -59,7 +62,7 @@ export function migrate(d: Database): void {
     CREATE TABLE IF NOT EXISTS unmapped_payment (
       id                 TEXT PRIMARY KEY,
       workspace          TEXT,
-      moniepoint_txn_id  TEXT NOT NULL UNIQUE,   -- idempotency backstop
+      moniepoint_txn_id  TEXT NOT NULL,          -- idempotency backstop, scoped per tenant below
       terminal_serial    TEXT,
       business_id        TEXT,
       amount_minor       INTEGER NOT NULL,
@@ -72,7 +75,8 @@ export function migrate(d: Database): void {
       resolution         TEXT NOT NULL DEFAULT 'unmatched',  -- unmatched|matched|manually_resolved|rejected
       resolved_order_id  TEXT,
       resolved_at        INTEGER,
-      created_at         INTEGER NOT NULL
+      created_at         INTEGER NOT NULL,
+      UNIQUE(workspace, moniepoint_txn_id)   -- idempotency scoped per tenant; a provider txn id is never a global key
     );
   `);
 }

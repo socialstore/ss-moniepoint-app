@@ -37,14 +37,25 @@ export function setWebhookSecret(db: Database, workspace: string, webhookSecretE
   );
 }
 
+export class TerminalOwnedByOtherWorkspace extends Error {}
+
+// Register (or idempotently update) a terminal. terminal_serial is GLOBALLY unique, so if the serial
+// already belongs to ANOTHER workspace we refuse — a tenant can never squat or silently overwrite
+// another tenant's terminal. (Connect should also verify ownership with Moniepoint before calling.)
 export function upsertTerminal(
   db: Database,
   r: { workspace: string; terminalSerial: string; nuban: string; accountName: string | null; bankName?: string; now: number },
 ): void {
+  const existing = db
+    .query<{ workspace: string }, [string]>("SELECT workspace FROM terminal WHERE terminal_serial = ?")
+    .get(r.terminalSerial);
+  if (existing && existing.workspace !== r.workspace) {
+    throw new TerminalOwnedByOtherWorkspace(`terminal ${r.terminalSerial} is registered to another workspace`);
+  }
   db.query(
     `INSERT INTO terminal (id,workspace,terminal_serial,nuban,account_name,bank_name,created_at)
      VALUES (?,?,?,?,?,?,?)
-     ON CONFLICT(workspace,terminal_serial) DO UPDATE SET
+     ON CONFLICT(terminal_serial) DO UPDATE SET
        nuban=excluded.nuban, account_name=excluded.account_name, bank_name=excluded.bank_name`,
   ).run(crypto.randomUUID(), r.workspace, r.terminalSerial, r.nuban, r.accountName, r.bankName ?? "Moniepoint MFB", r.now);
 }

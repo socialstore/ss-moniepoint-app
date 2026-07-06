@@ -37,6 +37,6 @@ webhook.post("/", async (c) => {
   if (!install?.sentralbee_key_enc) return c.json({ error: "install not configured (no api key)" }, 409);
   const client = httpSentralbee(SENTRALBEE_API, await decryptSecret(install.sentralbee_key_enc));
 
-  const outcome = await reconcile(db, transfer, client);
+  const outcome = await reconcile(db, transfer, client, workspace);
   return c.json({ outcome });
 });

@@ -52,14 +52,14 @@ test("APPROVED, reference-LESS transfer with a unique amount reconciles + marks 
   const { calls, client } = fakeClient();
   const t = normalizeWebhook(webhook({ amount: intent.amountMinor / 100, merchantReference: "" }), T0 + 1000);
 
-  const out = await reconcile(db, t, client);
+  const out = await reconcile(db, t, client, WS);
   expect(out.kind).toBe("reconciled");
   expect(calls.length).toBe(1);
   expect(calls[0]!.orderId).toBe("order-1");
   expect(calls[0]!.reference).toBe("TXN1"); // idempotency key = moniepoint txn id
 
   // webhook redelivery is a no-op
-  const out2 = await reconcile(db, t, client);
+  const out2 = await reconcile(db, t, client, WS);
   expect(out2.kind).toBe("duplicate");
   expect(calls.length).toBe(1);
 });
@@ -69,12 +69,12 @@ test("PENDING does not pay; the later APPROVED (same txn) reconciles + clears su
   const { calls, client } = fakeClient();
 
   const pend = normalizeWebhook(webhook({ transactionStatus: "PENDING", amount: intent.amountMinor / 100 }), T0 + 500);
-  expect((await reconcile(db, pend, client)).kind).toBe("pending");
+  expect((await reconcile(db, pend, client, WS)).kind).toBe("pending");
   expect(calls.length).toBe(0);
   expect(listUnmapped(db, WS).length).toBe(1); // parked in suspense
 
   const appr = normalizeWebhook(webhook({ transactionStatus: "APPROVED", amount: intent.amountMinor / 100 }), T0 + 1000);
-  expect((await reconcile(db, appr, client)).kind).toBe("reconciled");
+  expect((await reconcile(db, appr, client, WS)).kind).toBe("reconciled");
   expect(calls.length).toBe(1);
   expect(listUnmapped(db, WS).length).toBe(0); // suspense row resolved
 });
@@ -84,7 +84,7 @@ test("no amount match lands in the suspense ledger, no payment", async () => {
   const { calls, client } = fakeClient();
   const t = normalizeWebhook(webhook({ amount: 99.99, transactionReference: "TXN-X" }), T0 + 1000);
 
-  const out = await reconcile(db, t, client);
+  const out = await reconcile(db, t, client, WS);
   expect(out).toEqual({ kind: "unmapped", reason: "no_match" });
   expect(calls.length).toBe(0);
   expect(listUnmapped(db, WS).length).toBe(1);
@@ -100,7 +100,7 @@ test("two open reservations at the same amount => ambiguous => suspense, no paym
   const { calls, client } = fakeClient();
   const t = normalizeWebhook(webhook({ amount: 14000, transactionReference: "TXN-AMB" }), T0 + 1000);
 
-  const out = await reconcile(db, t, client);
+  const out = await reconcile(db, t, client, WS);
   expect(out).toEqual({ kind: "unmapped", reason: "ambiguous" });
   expect(calls.length).toBe(0);
 });

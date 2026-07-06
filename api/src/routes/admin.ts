@@ -36,18 +36,21 @@ admin.get("/clearing-house", (c) => {
   return c.json({ unmapped: listUnmapped(getDb(), workspace) });
 });
 
-// POST /admin/clearing-house/:id/resolve { orderId } — manually bind a suspense payment to an order.
+// POST /admin/clearing-house/:id/resolve?workspace=W { orderId } — manually bind a suspense payment
+// to an order. The suspense row + the install are BOTH scoped to the workspace, so a leaked row id
+// can never be resolved cross-tenant. (Track B: workspace comes from a verified session token, not ?query.)
 admin.post("/clearing-house/:id/resolve", async (c) => {
   const id = c.req.param("id");
+  const workspace = c.req.query("workspace");
+  if (!workspace) return c.json({ error: "workspace required" }, 400);
   const body = (await c.req.json().catch(() => ({}))) as { orderId?: string };
   if (!body.orderId) return c.json({ error: "orderId required" }, 400);
 
   const db = getDb();
-  const row = getUnmapped(db, id);
+  const row = getUnmapped(db, id, workspace);
   if (!row || row.resolution !== "unmatched") return c.json({ error: "not found or already resolved" }, 404);
-  if (!row.workspace) return c.json({ error: "payment has no workspace" }, 409);
 
-  const install = getInstall(db, row.workspace);
+  const install = getInstall(db, workspace);
   if (!install?.sentralbee_key_enc) return c.json({ error: "install not configured" }, 409);
 
   const client = httpSentralbee(SENTRALBEE_API, await decryptSecret(install.sentralbee_key_enc));
@@ -59,6 +62,6 @@ admin.post("/clearing-house/:id/resolve", async (c) => {
     provider: "moniepoint",
     metadata: { manual: true, terminalSerial: row.terminal_serial, senderName: row.sender_name },
   });
-  markUnmappedResolved(db, row.moniepoint_txn_id, body.orderId, Date.now());
+  markUnmappedResolved(db, row.moniepoint_txn_id, body.orderId, Date.now(), workspace);
   return c.json({ ok: true, orderId: body.orderId });
 });

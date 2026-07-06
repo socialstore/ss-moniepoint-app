@@ -36,17 +36,22 @@ install.post("/connect", async (c) => {
   });
 
   let terminals = 0;
+  const rejectedTerminals: string[] = [];
   for (const t of b.terminals ?? []) {
     if (t?.terminalSerial && t?.nuban) {
-      upsertTerminal(db, {
-        workspace: b.workspace,
-        terminalSerial: t.terminalSerial,
-        nuban: t.nuban,
-        accountName: t.accountName ?? null,
-        bankName: t.bankName,
-        now,
-      });
-      terminals++;
+      try {
+        upsertTerminal(db, {
+          workspace: b.workspace,
+          terminalSerial: t.terminalSerial,
+          nuban: t.nuban,
+          accountName: t.accountName ?? null,
+          bankName: t.bankName,
+          now,
+        });
+        terminals++;
+      } catch {
+        rejectedTerminals.push(t.terminalSerial); // already registered to another workspace
+      }
     }
   }
 
@@ -72,5 +77,12 @@ install.post("/connect", async (c) => {
     webhookSetup = { ok: false, error: "moniepointClientId + moniepointClientSecret required to set up webhooks" };
   }
 
-  return c.json({ ok: true, workspace: b.workspace, terminals: listTerminals(db, b.workspace).length, added: terminals, webhookSetup });
+  return c.json({
+    ok: true,
+    workspace: b.workspace,
+    terminals: listTerminals(db, b.workspace).length,
+    added: terminals,
+    rejectedTerminals,
+    webhookSetup,
+  });
 });

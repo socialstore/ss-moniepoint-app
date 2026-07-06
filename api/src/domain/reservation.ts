@@ -71,10 +71,10 @@ export function reserve(
 
   const held = new Set(
     db
-      .query<{ amount_minor: number }, [string, number]>(
-        "SELECT amount_minor FROM reservation WHERE terminal_serial = ? AND status = 'open' AND expires_at > ?",
+      .query<{ amount_minor: number }, [string, string, number]>(
+        "SELECT amount_minor FROM reservation WHERE workspace = ? AND terminal_serial = ? AND status = 'open' AND expires_at > ?",
       )
-      .all(terminalSerial, now)
+      .all(workspace, terminalSerial, now)
       .map((r) => r.amount_minor),
   );
   let amount = -1;
