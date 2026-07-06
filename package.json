@@ -1,0 +1,12 @@
+{
+  "name": "ss-moniepoint-app",
+  "private": true,
+  "type": "module",
+  "workspaces": ["api", "ui"],
+  "scripts": {
+    "dev": "bun run --filter '@ss-moniepoint/api' dev",
+    "build:ui": "bun run --filter '@ss-moniepoint/ui' build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test ./api"
+  }
+}
