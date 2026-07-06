@@ -1,7 +1,9 @@
 import { Hono } from "hono";
+import { serveStatic } from "hono/bun";
 import { webhook } from "./routes/webhook";
 import { checkout } from "./routes/checkout";
 import { install } from "./routes/install";
+import { admin } from "./routes/admin";
 
 export const app = new Hono();
 
@@ -13,6 +15,8 @@ app.route("/webhook", webhook);
 app.route("/checkout", checkout);
 // AppInstaller: store merchant creds + register terminals.
 app.route("/install", install);
+// Embedded admin backend: connect · terminals · clearing-house.
+app.route("/admin", admin);
 
-// Embedded admin backend (session-token verified) — next pass (p2-admin-ui).
-app.get("/admin/ping", (c) => c.json({ error: "not implemented (skeleton)" }, 501));
+// Serve the built embed UI (ui/dist) from the same origin — registered LAST so the API routes win.
+app.use("/*", serveStatic({ root: "./ui/dist" }));
