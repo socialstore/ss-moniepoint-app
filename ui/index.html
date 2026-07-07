@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>Moniepoint · Sentralbee</title>
-    <!-- Set the theme BEFORE CSS/React paints so the first frame has the right background (no flash).
-         The host bakes the initial theme into ?theme=; live flips still arrive via postMessage. -->
+    <!-- Theme the DOCUMENT background before the app CSS loads, so the WebView/iframe's first painted
+         frame is the right colour — otherwise the browser paints its default white canvas until index.css
+         applies bg-background (the white flash). Values match the app --background. -->
+    <style>
+      :root { background-color: #f6f7fa; }
+      :root.dark { background-color: #0f1420; }
+    </style>
+    <!-- Set the theme class BEFORE CSS/React paints. The host bakes the initial theme into ?theme=;
+         live flips still arrive via postMessage. -->
     <script>
       (function () {
         try {
