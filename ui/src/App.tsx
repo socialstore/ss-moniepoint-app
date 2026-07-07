@@ -3,7 +3,7 @@ import { Inbox, Landmark, ShieldCheck, Wifi, type LucideIcon } from "lucide-reac
 import { ready } from "./bridge";
 import { useHostTheme } from "./theme";
 import { useSafeArea } from "./safearea";
-import { api, naira, sessionToken, workspaceFromToken, type AppConfig, type Terminal, type Unmapped } from "./api";
+import { api, naira, sessionToken, workspaceInfoFromToken, type AppConfig, type Terminal, type Unmapped, type WorkspaceInfo } from "./api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,14 +32,29 @@ function MoniepointMark({ className }: { className?: string }) {
   );
 }
 
+// The workspace this embed is scoped to — a small avatar + display name (from the session token's
+// wsn/wsd claims), falling back to the domain, then a short id. Beats showing the raw UUID.
+function WorkspaceChip({ ws }: { ws: WorkspaceInfo }) {
+  const label = ws.name || ws.domain || ws.id.slice(0, 8);
+  const initial = (ws.name || ws.domain || "?").charAt(0).toUpperCase();
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-full border bg-card py-1 pl-1 pr-3">
+      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+        {initial}
+      </div>
+      <span className="max-w-[160px] truncate text-xs font-medium">{label}</span>
+    </div>
+  );
+}
+
 export function App() {
   useHostTheme();
   useSafeArea();
   const [tab, setTab] = useState<Tab>("connect");
-  const [ws, setWs] = useState<string | undefined>(undefined); // undefined = resolving the session token
+  const [ws, setWs] = useState<WorkspaceInfo | null | undefined>(undefined); // undefined = resolving token, null = no session
   useEffect(() => {
     ready();
-    sessionToken().then((t) => setWs(t ? workspaceFromToken(t) : ""));
+    sessionToken().then((t) => setWs(t ? workspaceInfoFromToken(t) : null));
   }, []);
 
   return (
@@ -63,11 +78,7 @@ export function App() {
               <div className="text-xs text-muted-foreground">Pay with Bank Transfer</div>
             </div>
           </div>
-          {ws ? (
-            <Badge variant="secondary" className="max-w-[45%] truncate font-normal text-muted-foreground">
-              {ws}
-            </Badge>
-          ) : null}
+          {ws ? <WorkspaceChip ws={ws} /> : null}
         </header>
 
         {ws === undefined ? (

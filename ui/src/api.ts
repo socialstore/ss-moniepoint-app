@@ -25,6 +25,22 @@ export function workspaceFromToken(token: string): string {
   }
 }
 
+export type WorkspaceInfo = { id: string; name: string; domain: string };
+
+/** DISPLAY-ONLY decode of the workspace's id + name + domain from the token (wid/wsn/wsd claims). */
+export function workspaceInfoFromToken(token: string): WorkspaceInfo {
+  try {
+    const p = JSON.parse(atob((token.split(".")[1] ?? "").replace(/-/g, "+").replace(/_/g, "/")));
+    return {
+      id: typeof p.wid === "string" ? p.wid : "",
+      name: typeof p.wsn === "string" ? p.wsn : "",
+      domain: typeof p.wsd === "string" ? p.wsd : "",
+    };
+  } catch {
+    return { id: "", name: "", domain: "" };
+  }
+}
+
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await sessionToken();
   const res = await fetch(API + path, {
