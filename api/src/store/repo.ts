@@ -10,21 +10,19 @@ export function upsertInstall(
   r: {
     workspace: string;
     businessId: string | null;
-    moniepointClientId: string | null;
-    moniepointSecretEnc: string | null;
+    moniepointTokenEnc: string | null;
     sentralbeeKeyEnc: string | null;
     now: number;
   },
 ): void {
   db.query(
-    `INSERT INTO install (workspace,business_id,moniepoint_client_id,moniepoint_secret_enc,sentralbee_key_enc,created_at)
-     VALUES (?,?,?,?,?,?)
+    `INSERT INTO install (workspace,business_id,moniepoint_token_enc,sentralbee_key_enc,created_at)
+     VALUES (?,?,?,?,?)
      ON CONFLICT(workspace) DO UPDATE SET
-       business_id           = COALESCE(excluded.business_id, install.business_id),
-       moniepoint_client_id  = COALESCE(excluded.moniepoint_client_id, install.moniepoint_client_id),
-       moniepoint_secret_enc = COALESCE(excluded.moniepoint_secret_enc, install.moniepoint_secret_enc),
-       sentralbee_key_enc    = COALESCE(excluded.sentralbee_key_enc, install.sentralbee_key_enc)`,
-  ).run(r.workspace, r.businessId, r.moniepointClientId, r.moniepointSecretEnc, r.sentralbeeKeyEnc, r.now);
+       business_id          = COALESCE(excluded.business_id, install.business_id),
+       moniepoint_token_enc = COALESCE(excluded.moniepoint_token_enc, install.moniepoint_token_enc),
+       sentralbee_key_enc   = COALESCE(excluded.sentralbee_key_enc, install.sentralbee_key_enc)`,
+  ).run(r.workspace, r.businessId, r.moniepointTokenEnc, r.sentralbeeKeyEnc, r.now);
 }
 
 // setWebhookSecret persists the signing secret + subscription id returned by Moniepoint when the

@@ -30,8 +30,7 @@ install.post("/provision", async (c) => {
   upsertInstall(db, {
     workspace: claims.workspace,
     businessId: null,
-    moniepointClientId: null,
-    moniepointSecretEnc: null,
+    moniepointTokenEnc: null,
     sentralbeeKeyEnc: await encryptSecret(body.apiKey),
     now: Date.now(),
   });
@@ -40,15 +39,14 @@ install.post("/provision", async (c) => {
 
 interface ConnectBody {
   businessId?: string;
-  moniepointClientId?: string; // merchant's Moniepoint API client id
-  moniepointClientSecret?: string; // merchant's Moniepoint API client secret
+  moniepointApiToken?: string; // merchant's Moniepoint API token (used directly — no OAuth exchange)
   webhookUrl?: string; // where Moniepoint should POST (defaults to MONIEPOINT_APP_PUBLIC_URL + /webhook)
   terminals?: { terminalSerial?: string; nuban?: string; accountName?: string; bankName?: string }[];
 }
 
-// POST /install/connect — the MERCHANT supplies ONLY app-specific config (Moniepoint creds + terminals)
-// from the embed UI. Session-authed; workspace from the token. Using the merchant's Moniepoint creds the
-// app CREATES the webhook subscription so Moniepoint returns the signing secret (never hand-copied). The
+// POST /install/connect — the MERCHANT supplies ONLY app-specific config (Moniepoint API token + terminals)
+// from the embed UI. Session-authed; workspace from the token. Using the merchant's API token the app
+// CREATES the webhook subscription so Moniepoint returns the signing secret (never hand-copied). The
 // Sentralbee key was already delivered by /provision, so it is not accepted here.
 install.post("/connect", async (c) => {
   const token = bearer(c);
@@ -67,8 +65,7 @@ install.post("/connect", async (c) => {
   upsertInstall(db, {
     workspace,
     businessId: b.businessId ?? null,
-    moniepointClientId: b.moniepointClientId ?? null,
-    moniepointSecretEnc: b.moniepointClientSecret ? await encryptSecret(b.moniepointClientSecret) : null,
+    moniepointTokenEnc: b.moniepointApiToken ? await encryptSecret(b.moniepointApiToken) : null,
     sentralbeeKeyEnc: null, // provisioned separately by the platform
     now,
   });
@@ -93,18 +90,17 @@ install.post("/connect", async (c) => {
     }
   }
 
-  // Provision the webhook subscription with Moniepoint and store the secret it returns.
+  // Provision the webhook subscription with Moniepoint (using the API token directly) and store the
+  // signing secret it returns.
   let webhookSetup: { ok: boolean; subscriptionId?: string; error?: string } = { ok: false };
-  if (b.moniepointClientId && b.moniepointClientSecret) {
+  if (b.moniepointApiToken) {
     const base = (Bun.env.MONIEPOINT_APP_PUBLIC_URL ?? "").replace(/\/$/, "");
     const webhookUrl = b.webhookUrl ?? (base ? `${base}/webhook` : "");
     if (!webhookUrl) {
       webhookSetup = { ok: false, error: "no webhook URL (set MONIEPOINT_APP_PUBLIC_URL or pass webhookUrl)" };
     } else {
       try {
-        const client = getMoniepointClient();
-        const mtoken = await client.authenticate(b.moniepointClientId, b.moniepointClientSecret);
-        const sub = await client.createWebhookSubscription(mtoken, webhookUrl);
+        const sub = await getMoniepointClient().createWebhookSubscription(b.moniepointApiToken, webhookUrl);
         setWebhookSecret(db, workspace, await encryptSecret(sub.secret), sub.subscriptionId);
         webhookSetup = { ok: true, subscriptionId: sub.subscriptionId };
       } catch (e) {
@@ -112,7 +108,7 @@ install.post("/connect", async (c) => {
       }
     }
   } else {
-    webhookSetup = { ok: false, error: "moniepointClientId + moniepointClientSecret required to set up webhooks" };
+    webhookSetup = { ok: false, error: "moniepointApiToken required to set up webhooks" };
   }
 
   return c.json({
@@ -127,7 +123,7 @@ install.post("/connect", async (c) => {
 
 // POST /install/uninstall — the PLATFORM tears down an install when the merchant uninstalls (or the
 // api-key is revoked). One-time provision JWT authed. Delete the Moniepoint webhook subscription
-// (best-effort, using the stored creds) then purge every local row for the workspace, so no orphaned
+// (best-effort, using the stored API token) then purge every local row for the workspace, so no orphaned
 // inbound routing or encrypted secret survives.
 install.post("/uninstall", async (c) => {
   const token = bearer(c);
@@ -142,12 +138,10 @@ install.post("/uninstall", async (c) => {
 
   const inst = getInstall(db, workspace);
   let subscriptionDeleted = false;
-  if (inst?.moniepoint_subscription_id && inst.moniepoint_client_id && inst.moniepoint_secret_enc) {
+  if (inst?.moniepoint_subscription_id && inst.moniepoint_token_enc) {
     try {
-      const client = getMoniepointClient();
-      const secret = await decryptSecret(inst.moniepoint_secret_enc);
-      const mtoken = await client.authenticate(inst.moniepoint_client_id, secret);
-      await client.deleteWebhookSubscription(mtoken, inst.moniepoint_subscription_id);
+      const apiToken = await decryptSecret(inst.moniepoint_token_enc);
+      await getMoniepointClient().deleteWebhookSubscription(apiToken, inst.moniepoint_subscription_id);
       subscriptionDeleted = true;
     } catch {
       // best-effort — still purge locally so a revoked install leaves nothing behind

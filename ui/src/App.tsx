@@ -134,7 +134,7 @@ function Field(p: { label: string; v: string; on: (v: string) => void; secret?: 
 
 function Connect() {
   const [cfg, setCfg] = useState<AppConfig | null>(null);
-  const [f, setF] = useState({ businessId: "", moniepointClientId: "", moniepointClientSecret: "" });
+  const [f, setF] = useState({ businessId: "", moniepointApiToken: "" });
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const load = () => api.config().then(setCfg).catch((e) => setMsg(String(e.message)));
@@ -147,7 +147,7 @@ function Connect() {
     setMsg("");
     try {
       const res = await api.connect(f);
-      setF({ ...f, moniepointClientSecret: "" });
+      setF({ ...f, moniepointApiToken: "" });
       const w = res.webhookSetup;
       setMsg(w?.ok ? `Connected · webhook subscription created (${w.subscriptionId || "ok"})` : `Saved · webhook: ${w?.error ?? "pending"}`);
       load();
@@ -165,9 +165,9 @@ function Connect() {
         <CardDescription>Link your Moniepoint account so transfers reconcile to orders automatically.</CardDescription>
         <div className="flex flex-wrap gap-1.5 pt-1">
           <StatusPill ok={!!cfg?.configured} icon={ShieldCheck} on="Connected" off="Not connected" />
-          {cfg?.hasClientCreds ? (
+          {cfg?.hasToken ? (
             <Badge variant="secondary" className="gap-1 font-normal">
-              <Landmark className="size-3" /> Moniepoint creds
+              <Landmark className="size-3" /> API token
             </Badge>
           ) : null}
           {cfg?.webhookConfigured ? (
@@ -179,8 +179,7 @@ function Connect() {
       </CardHeader>
       <CardContent className="space-y-4">
         <Field label="Moniepoint business ID" v={f.businessId} on={(v) => setF({ ...f, businessId: v })} />
-        <Field label="Moniepoint API client ID" v={f.moniepointClientId} on={(v) => setF({ ...f, moniepointClientId: v })} />
-        <Field label="Moniepoint API client secret" v={f.moniepointClientSecret} on={(v) => setF({ ...f, moniepointClientSecret: v })} secret />
+        <Field label="Moniepoint API token" v={f.moniepointApiToken} on={(v) => setF({ ...f, moniepointApiToken: v })} secret />
         <p className="text-xs leading-relaxed text-muted-foreground">
           Your Sentralbee API access was provisioned automatically on install — the app also creates the Moniepoint webhook
           subscription for you, so there are no keys or secrets to copy.

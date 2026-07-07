@@ -39,10 +39,9 @@ const WS = "workspace-demo";
 const TERM = "P260678997653";
 const WHSEC = "whsec_from_moniepoint_subscription";
 
-// Stand in for Moniepoint's API: on connect the app uses the merchant's client creds to create a
+// Stand in for Moniepoint's API: on connect the app uses the merchant's API token to create a
 // webhook subscription; Moniepoint returns this signing secret (the merchant never hand-copies it).
 setMoniepointClient({
-  authenticate: async () => "fake-moniepoint-token",
   createWebhookSubscription: async () => ({ subscriptionId: "sub_demo", secret: WHSEC }),
   deleteWebhookSubscription: async () => {},
 });
@@ -62,10 +61,10 @@ const sessionTok = await signSession(keys.privateKey, WS);
 console.log("① platform provisions — auto-minted Sentralbee api key delivered server-to-server (no manual paste)");
 console.log("  ", json(await jj("/install/provision", { method: "POST", headers: auth(provisionTok), body: json({ apiKey: "sk_demo_app_key" }) })));
 
-console.log("\n② merchant connects — hands over Moniepoint API creds; the app creates the webhook subscription");
+console.log("\n② merchant connects — hands over the Moniepoint API token; the app creates the webhook subscription");
 console.log("  ", json(await jj("/install/connect", { method: "POST", headers: auth(sessionTok), body: json({
   businessId: "42",
-  moniepointClientId: "mp_client_demo", moniepointClientSecret: "mp_secret_demo",
+  moniepointApiToken: "mp_token_demo",
   webhookUrl: "https://demo-app.example/webhook",
   terminals: [{ terminalSerial: TERM, nuban: "5012345678", accountName: "ACME LTD" }],
 }) })));

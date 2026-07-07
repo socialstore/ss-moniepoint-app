@@ -1,11 +1,11 @@
-// Moniepoint POS developer API client. When a merchant connects, the app uses THEIR client
-// credentials to authenticate and CREATE a webhook subscription — Moniepoint returns the signing
-// secret, so the merchant never hand-copies it and the app never asks for it.
+// Moniepoint POS developer API client. Moniepoint authenticates with a single API TOKEN — the merchant
+// pastes it in on connect and the app uses it DIRECTLY on the Moniepoint API (no OAuth client-credentials
+// exchange). We use it to CREATE a webhook subscription, so Moniepoint returns the signing secret and the
+// merchant never hand-copies it.
 //
-// The exact auth + subscription paths/payloads are PARTNER-GATED (best-guess from the public
-// research: channel.moniepoint.com + the "Subscription Management" webhook docs). They are fully
-// configurable via env and the client is injectable (setMoniepointClient) so dev/tests/demo never
-// hit real Moniepoint — confirm the real endpoints against Moniepoint before go-live.
+// The exact subscription paths/payloads (and the precise token header) are PARTNER-GATED (best-guess from
+// the public research). They are configurable via env and the client is injectable (setMoniepointClient)
+// so dev/tests/demo never hit real Moniepoint — confirm the real endpoints against Moniepoint before go-live.
 
 export interface WebhookSubscription {
   subscriptionId: string;
@@ -13,32 +13,20 @@ export interface WebhookSubscription {
 }
 
 export interface MoniepointClient {
-  authenticate(clientId: string, clientSecret: string): Promise<string>; // -> bearer token
-  createWebhookSubscription(token: string, webhookUrl: string, events?: string[]): Promise<WebhookSubscription>;
-  deleteWebhookSubscription(token: string, subscriptionId: string): Promise<void>;
+  createWebhookSubscription(apiToken: string, webhookUrl: string, events?: string[]): Promise<WebhookSubscription>;
+  deleteWebhookSubscription(apiToken: string, subscriptionId: string): Promise<void>;
 }
 
 const DEFAULT_EVENTS = ["V1_POS_TRANSFER_TRANSACTION", "V1_TRANSFER_TRANSACTION"];
 
-export function httpMoniepoint(cfg?: { apiBase?: string; authUrl?: string }): MoniepointClient {
+export function httpMoniepoint(cfg?: { apiBase?: string }): MoniepointClient {
   const apiBase = (cfg?.apiBase ?? Bun.env.MONIEPOINT_API_BASE ?? "https://channel.moniepoint.com").replace(/\/$/, "");
-  const authUrl = cfg?.authUrl ?? Bun.env.MONIEPOINT_AUTH_URL ?? `${apiBase}/oauth/token`;
+  const auth = (apiToken: string) => ({ authorization: `Bearer ${apiToken}` });
   return {
-    async authenticate(clientId, clientSecret) {
-      const res = await fetch(authUrl, {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ grant_type: "client_credentials", client_id: clientId, client_secret: clientSecret }),
-      });
-      if (!res.ok) throw new Error(`moniepoint auth failed (${res.status})`);
-      const data = (await res.json()) as { access_token?: string };
-      if (!data.access_token) throw new Error("moniepoint auth returned no access_token");
-      return data.access_token;
-    },
-    async createWebhookSubscription(token, webhookUrl, events = DEFAULT_EVENTS) {
+    async createWebhookSubscription(apiToken, webhookUrl, events = DEFAULT_EVENTS) {
       const res = await fetch(`${apiBase}/v1/webhooks/subscriptions`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        headers: { "content-type": "application/json", ...auth(apiToken) },
         body: JSON.stringify({ url: webhookUrl, events }),
       });
       if (!res.ok) throw new Error(`moniepoint subscription failed (${res.status})`);
@@ -47,11 +35,11 @@ export function httpMoniepoint(cfg?: { apiBase?: string; authUrl?: string }): Mo
       if (!secret) throw new Error("moniepoint subscription returned no signing secret");
       return { subscriptionId: data.subscriptionId ?? data.id ?? "", secret };
     },
-    async deleteWebhookSubscription(token, subscriptionId) {
+    async deleteWebhookSubscription(apiToken, subscriptionId) {
       if (!subscriptionId) return;
       const res = await fetch(`${apiBase}/v1/webhooks/subscriptions/${encodeURIComponent(subscriptionId)}`, {
         method: "DELETE",
-        headers: { authorization: `Bearer ${token}` },
+        headers: auth(apiToken),
       });
       if (!res.ok && res.status !== 404) throw new Error(`moniepoint delete subscription failed (${res.status})`);
     },

@@ -19,7 +19,7 @@ admin.get("/config", (c) => {
   return c.json({
     configured: !!i?.sentralbee_key_enc,
     businessId: i?.business_id ?? null,
-    hasClientCreds: !!i?.moniepoint_secret_enc,
+    hasToken: !!i?.moniepoint_token_enc,
     webhookConfigured: !!i?.webhook_secret_enc,
     subscriptionId: i?.moniepoint_subscription_id ?? null,
   });

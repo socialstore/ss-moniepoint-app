@@ -17,7 +17,6 @@ beforeAll(async () => {
   pubKey = await importSPKI(keys.publicKeyPem, "EdDSA");
   // Moniepoint client is stubbed so /connect never reaches the network.
   setMoniepointClient({
-    authenticate: async () => "tok",
     createWebhookSubscription: async () => ({ subscriptionId: "sub_test", secret: "whsec_test" }),
     deleteWebhookSubscription: async () => {},
   });
@@ -38,8 +37,14 @@ function req(path: string, init?: RequestInit) {
 
 test("session/provision verification fails closed when no platform key is configured", async () => {
   _setPlatformKey(null); // simulate missing PLATFORM_JWT_PUBLIC_KEY
-  const tok = await signSession(keys.privateKey, "A");
-  await expect(verifySession(tok)).rejects.toThrow(/PLATFORM_JWT_PUBLIC_KEY is not set/);
+  const saved = Bun.env.PLATFORM_JWT_PUBLIC_KEY;
+  delete Bun.env.PLATFORM_JWT_PUBLIC_KEY; // a dev .env may auto-load a key; clear it so "not configured" is real
+  try {
+    const tok = await signSession(keys.privateKey, "A");
+    await expect(verifySession(tok)).rejects.toThrow(/PLATFORM_JWT_PUBLIC_KEY is not set/);
+  } finally {
+    if (saved !== undefined) Bun.env.PLATFORM_JWT_PUBLIC_KEY = saved;
+  }
 });
 
 test("a session token is rejected as a provision token, and vice-versa (purpose is bound)", async () => {
@@ -91,7 +96,7 @@ test("connect + reserve are scoped to the session token's workspace (not the bod
   const connect = await req("/install/connect", {
     method: "POST",
     headers: { ...H, ...bearer(sessA) },
-    body: JSON.stringify({ businessId: "42", moniepointClientId: "c", moniepointClientSecret: "s", webhookUrl: "https://x/webhook", terminals: [{ terminalSerial: "T-A", nuban: "5001", accountName: "A LTD" }] }),
+    body: JSON.stringify({ businessId: "42", moniepointApiToken: "t", webhookUrl: "https://x/webhook", terminals: [{ terminalSerial: "T-A", nuban: "5001", accountName: "A LTD" }] }),
   });
   expect(connect.status).toBe(200);
   expect(await connect.json()).toMatchObject({ workspace: "A", added: 1, webhookSetup: { ok: true } });
@@ -106,7 +111,7 @@ test("connect + reserve are scoped to the session token's workspace (not the bod
 test("/uninstall purges the workspace and deletes the Moniepoint subscription", async () => {
   // provision + connect A (registers a terminal + subscription)
   await req("/install/provision", { method: "POST", headers: { ...H, ...bearer(await signProvision(keys.privateKey, "A")) }, body: JSON.stringify({ apiKey: "sk_A" }) });
-  await req("/install/connect", { method: "POST", headers: { ...H, ...bearer(await signSession(keys.privateKey, "A")) }, body: JSON.stringify({ moniepointClientId: "c", moniepointClientSecret: "s", webhookUrl: "https://x/webhook", terminals: [{ terminalSerial: "T-A", nuban: "5001" }] }) });
+  await req("/install/connect", { method: "POST", headers: { ...H, ...bearer(await signSession(keys.privateKey, "A")) }, body: JSON.stringify({ moniepointApiToken: "t", webhookUrl: "https://x/webhook", terminals: [{ terminalSerial: "T-A", nuban: "5001" }] }) });
   expect(db.query("SELECT count(*) n FROM install WHERE workspace='A'").get()).toMatchObject({ n: 1 });
   expect(db.query("SELECT count(*) n FROM terminal WHERE workspace='A'").get()).toMatchObject({ n: 1 });
 

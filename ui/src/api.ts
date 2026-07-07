@@ -55,7 +55,7 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 export interface AppConfig {
   configured: boolean;
   businessId: string | null;
-  hasClientCreds: boolean;
+  hasToken: boolean;
   webhookConfigured: boolean;
   subscriptionId: string | null;
 }
