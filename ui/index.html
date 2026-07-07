@@ -3,7 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>Moniepoint · Sentralbee</title>
+    <!-- Set the theme BEFORE CSS/React paints so the first frame has the right background (no flash).
+         The host bakes the initial theme into ?theme=; live flips still arrive via postMessage. -->
+    <script>
+      (function () {
+        try {
+          var t = new URLSearchParams(location.search).get("theme");
+          if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

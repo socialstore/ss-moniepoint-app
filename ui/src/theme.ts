@@ -12,7 +12,10 @@ function applyTheme(mode: Mode) {
 // (it is the source of truth for the embed's look).
 export function useHostTheme() {
   useEffect(() => {
-    let hostControls = false;
+    // The host bakes the initial theme into ?theme= (also read by the inline script in index.html for a
+    // flash-free first paint). If present, treat it as host-provided so the OS scheme can't override it.
+    const urlTheme = new URLSearchParams(window.location.search).get("theme");
+    let hostControls = urlTheme === "dark" || urlTheme === "light";
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const applySystem = () => {
       if (!hostControls) applyTheme(mq.matches ? "dark" : "light");
@@ -28,7 +31,8 @@ export function useHostTheme() {
 
     window.addEventListener("message", onMessage);
     mq.addEventListener("change", applySystem);
-    applySystem(); // initial, until the host tells us otherwise
+    if (hostControls) applyTheme(urlTheme as Mode);
+    else applySystem(); // no host hint yet → follow the OS scheme until the host tells us otherwise
     window.parent?.postMessage({ type: "GET_THEME" }, "*"); // nudge the host to send its current theme
 
     return () => {
