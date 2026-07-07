@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Inbox, Landmark, ShieldCheck, Wifi, type LucideIcon } from "lucide-react";
 import { ready } from "./bridge";
 import { useHostTheme } from "./theme";
+import { useSafeArea } from "./safearea";
 import { api, naira, sessionToken, workspaceFromToken, type AppConfig, type Terminal, type Unmapped } from "./api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ function MoniepointMark({ className }: { className?: string }) {
 
 export function App() {
   useHostTheme();
+  useSafeArea();
   const [tab, setTab] = useState<Tab>("connect");
   const [ws, setWs] = useState<string | undefined>(undefined); // undefined = resolving the session token
   useEffect(() => {
@@ -41,8 +43,18 @@ export function App() {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
+    // bg fills edge-to-edge under the notch; left/right insets shift the content, top/bottom fold into it.
+    <div
+      className="min-h-dvh bg-background text-foreground"
+      style={{ paddingLeft: "var(--safe-left, 0px)", paddingRight: "var(--safe-right, 0px)" }}
+    >
+      <div
+        className="mx-auto w-full max-w-3xl px-4 sm:px-6"
+        style={{
+          paddingTop: "calc(1.5rem + var(--safe-top, 0px))",
+          paddingBottom: "calc(1.5rem + var(--safe-bottom, 0px))",
+        }}
+      >
         <header className="flex items-center justify-between gap-3 pb-6">
           <div className="flex items-center gap-3">
             <MoniepointMark className="size-11" />
