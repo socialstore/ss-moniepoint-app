@@ -78,3 +78,24 @@ export function reservationForOrder(db: Database, workspace: string, orderId: st
     )
     .get(workspace, orderId);
 }
+
+// Lookup a reservation by its id ALONE (no workspace scope). The id is an unguessable UUID, so it doubles
+// as the bearer for the anonymous hosted pay page — a customer who has the checkout URL can read only that
+// one reservation, never enumerate a tenant's orders.
+export function getReservationById(db: Database, id: string): ReservationRow | null {
+  return db.query<ReservationRow, [string]>("SELECT * FROM reservation WHERE id = ?").get(id);
+}
+
+export function getTerminal(db: Database, workspace: string, terminalSerial: string): TerminalRow | null {
+  return db
+    .query<TerminalRow, [string, string]>("SELECT * FROM terminal WHERE workspace = ? AND terminal_serial = ?")
+    .get(workspace, terminalSerial);
+}
+
+// The workspace's default terminal for storefront checkouts — the anonymous storefront never picks a
+// terminal, so the app routes an online transfer to the merchant's first-registered terminal account.
+export function firstTerminal(db: Database, workspace: string): TerminalRow | null {
+  return db
+    .query<TerminalRow, [string]>("SELECT * FROM terminal WHERE workspace = ? ORDER BY created_at LIMIT 1")
+    .get(workspace);
+}

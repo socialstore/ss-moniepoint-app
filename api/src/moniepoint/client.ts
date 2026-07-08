@@ -20,7 +20,7 @@ export interface MoniepointClient {
 const DEFAULT_EVENTS = ["V1_POS_TRANSFER_TRANSACTION", "V1_TRANSFER_TRANSACTION"];
 
 export function httpMoniepoint(cfg?: { apiBase?: string }): MoniepointClient {
-  const apiBase = (cfg?.apiBase ?? Bun.env.MONIEPOINT_API_BASE ?? "https://channel.moniepoint.com").replace(/\/$/, "");
+  const apiBase = (cfg?.apiBase ?? Bun.env.MONIEPOINT_API_BASE ?? "https://api.pos.moniepoint.com").replace(/\/$/, "");
   const auth = (apiToken: string) => ({ authorization: `Bearer ${apiToken}` });
   return {
     async createWebhookSubscription(apiToken, webhookUrl, events = DEFAULT_EVENTS) {

@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { ReservationRow, TerminalRow } from "../store/types";
 
 export interface InstructionsPaymentIntent {
+  id: string; // the reservation id — also the unguessable bearer for the anonymous hosted pay page
   orderId: string;
   amountMinor: number;
   amountDisplay: string; // "14,000.37"
@@ -29,6 +30,7 @@ export function formatMinor(minor: number): string {
 
 function toIntent(r: ReservationRow, t: TerminalRow): InstructionsPaymentIntent {
   return {
+    id: r.id,
     orderId: r.order_id,
     amountMinor: r.amount_minor,
     amountDisplay: formatMinor(r.amount_minor),
