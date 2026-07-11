@@ -1,16 +1,16 @@
-# Graph Report - ss-moniepoint-app  (2026-07-06)
+# Graph Report - ss-moniepoint-app  (2026-07-11)
 
 ## Corpus Check
-- 39 files · ~11,512 words
+- 53 files · ~15,519 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 241 nodes · 379 edges · 18 communities (17 shown, 1 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
+- 342 nodes · 580 edges · 17 communities (16 shown, 1 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 5 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bb41207d`
+- Built from commit: `5c8adb2c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -30,48 +30,47 @@
 - [[_COMMUNITY_Community 14|Community 14]]
 - [[_COMMUNITY_Community 15|Community 15]]
 - [[_COMMUNITY_Community 16|Community 16]]
-- [[_COMMUNITY_Community 17|Community 17]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `compilerOptions` - 13 edges
-2. `compilerOptions` - 13 edges
-3. `compilerOptions` - 12 edges
-4. `memoryDb()` - 8 edges
-5. `getDb()` - 7 edges
-6. `reconcile()` - 6 edges
-7. `reserve()` - 6 edges
-8. `scripts` - 6 edges
-9. `ss-moniepoint-app` - 6 edges
-10. `scripts` - 5 edges
+1. `cn()` - 36 edges
+2. `compilerOptions` - 15 edges
+3. `compilerOptions` - 15 edges
+4. `compilerOptions` - 12 edges
+5. `getDb()` - 9 edges
+6. `memoryDb()` - 9 edges
+7. `reconcile()` - 6 edges
+8. `reserve()` - 6 edges
+9. `scripts` - 6 edges
+10. `tailwind` - 6 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `reconcile()` --calls--> `markUnmappedResolved()`  [EXTRACTED]
-  api/src/domain/matcher.ts → api/src/domain/suspense.ts
-- `reconcile()` --calls--> `upsertUnmapped()`  [EXTRACTED]
-  api/src/domain/matcher.ts → api/src/domain/suspense.ts
+- `MoniepointMark()` --calls--> `cn()`  [INFERRED]
+  ui/src/App.tsx → ui/src/lib/utils.ts
+- `StatusPill()` --calls--> `cn()`  [INFERRED]
+  ui/src/App.tsx → ui/src/lib/utils.ts
 - `seed()` --calls--> `encryptSecret()`  [EXTRACTED]
   api/src/routes/webhook.test.ts → api/src/lib/cypher.ts
-- `seed()` --calls--> `memoryDb()`  [EXTRACTED]
-  api/src/routes/webhook.test.ts → api/src/store/db.ts
-- `seed()` --calls--> `setDb()`  [EXTRACTED]
-  api/src/routes/webhook.test.ts → api/src/store/db.ts
+- `App()` --calls--> `useSafeArea()`  [INFERRED]
+  ui/src/App.tsx → ui/src/safearea.ts
+- `App()` --calls--> `useHostTheme()`  [INFERRED]
+  ui/src/App.tsx → ui/src/theme.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (18 total, 1 thin omitted)
+## Communities (17 total, 1 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.12
-Nodes (15): //, compilerOptions, allowImportingTsExtensions, jsx, lib, module, moduleDetection, moduleResolution (+7 more)
+Cohesion: 0.11
+Nodes (18): //, compilerOptions, allowImportingTsExtensions, baseUrl, jsx, lib, module, moduleDetection (+10 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.12
-Nodes (15): dependencies, hono, jose, devDependencies, @types/bun, typescript, module, name (+7 more)
+Nodes (16): dependencies, hono, jose, @sentralbee/app-sdk, devDependencies, @types/bun, typescript, module (+8 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.13
-Nodes (14): compilerOptions, allowImportingTsExtensions, jsx, lib, module, moduleResolution, noEmit, skipLibCheck (+6 more)
+Cohesion: 0.11
+Nodes (17): compilerOptions, allowImportingTsExtensions, baseUrl, jsx, lib, module, moduleResolution, noEmit (+9 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.14
@@ -82,64 +81,60 @@ Cohesion: 0.14
 Nodes (13): devDependencies, @types/bun, typescript, name, private, scripts, build:ui, demo (+5 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.11
-Nodes (17): dependencies, react, react-dom, devDependencies, @types/react, @types/react-dom, typescript, vite (+9 more)
+Cohesion: 0.06
+Nodes (31): dependencies, class-variance-authority, clsx, @fontsource-variable/inter, lucide-react, radix-ui, @radix-ui/react-label, @radix-ui/react-separator (+23 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.29
 Nodes (6): Auth & env, Develop, Layout, ss-moniepoint-app, Stack, Status
 
 ### Community 7 - "Community 7"
-Cohesion: 0.14
-Nodes (14): api, AppConfig, j(), naira(), sessionToken(), Terminal, Unmapped, WebhookSetup (+6 more)
+Cohesion: 0.06
+Nodes (49): cn(), api, AppConfig, j(), naira(), sessionToken(), Terminal, Unmapped (+41 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.17
-Nodes (17): MatchOutcome, reconcile(), listUnmapped(), markUnmappedResolved(), resolveWorkspace(), upsertUnmapped(), InboundTransfer, MoniepointWebhook (+9 more)
+Cohesion: 0.16
+Nodes (17): MatchOutcome, reconcile(), getUnmapped(), listUnmapped(), markUnmappedResolved(), resolveWorkspace(), upsertUnmapped(), body (+9 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.13
-Nodes (25): app, bearer(), PlatformClaims, platformKey(), sessionAuth, SessionVars, _setPlatformKey(), verify() (+17 more)
+Cohesion: 0.12
+Nodes (26): app, bearer(), PlatformClaims, sessionAuth, SessionVars, verifier(), verifyProvision(), verifySession() (+18 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.19
-Nodes (12): appKey(), decoder, decryptSecret(), encoder, encryptSecret(), seed(), port, server (+4 more)
+Cohesion: 0.11
+Nodes (17): aliases, components, hooks, lib, ui, utils, iconLibrary, rsc (+9 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.17
-Nodes (11): H, makeTestKeys(), signProvision(), signSession(), TestKeys, DEFAULT_EVENTS, getMoniepointClient(), httpMoniepoint() (+3 more)
+Cohesion: 0.11
+Nodes (24): _setPlatformKey(), H, makeTestKeys(), signProvision(), signSession(), TestKeys, DEFAULT_EVENTS, getMoniepointClient() (+16 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.33
-Nodes (6): formatMinor(), InstructionsPaymentIntent, reserve(), ReserveDeps, toIntent(), TerminalRow
+Cohesion: 0.12
+Nodes (19): formatMinor(), InstructionsPaymentIntent, reserve(), ReserveDeps, toIntent(), esc(), notFoundPage(), PayData (+11 more)
 
 ### Community 16 - "Community 16"
 Cohesion: 0.29
 Nodes (6): H, jj(), json(), mock, payload, sig
 
-### Community 17 - "Community 17"
-Cohesion: 0.50
-Nodes (3): body, sig, verifyWebhookAuth()
-
 ## Knowledge Gaps
-- **109 isolated node(s):** `name`, `private`, `type`, `module`, `dev` (+104 more)
+- **145 isolated node(s):** `name`, `private`, `type`, `module`, `dev` (+140 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `memoryDb()` connect `Community 10` to `Community 8`, `Community 14`, `Community 15`?**
-  _High betweenness centrality (0.010) - this node is a cross-community bridge._
-- **Why does `getDb()` connect `Community 9` to `Community 8`, `Community 10`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
-- **Why does `verifyWebhookAuth()` connect `Community 17` to `Community 8`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **Why does `getDb()` connect `Community 14` to `Community 8`, `Community 9`, `Community 15`?**
+  _High betweenness centrality (0.009) - this node is a cross-community bridge._
+- **Are the 2 inferred relationships involving `cn()` (e.g. with `MoniepointMark()` and `StatusPill()`) actually correct?**
+  _`cn()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `name`, `private`, `type` to the rest of the system?**
-  _109 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _145 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.125 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.125 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11764705882352941 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.13333333333333333 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1111111111111111 - nodes in this community are weakly interconnected._
+- **Should `Community 3` be split into smaller, more focused modules?**
+  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
