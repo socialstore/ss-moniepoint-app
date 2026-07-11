@@ -1,3 +1,5 @@
+import { sentralbeeClient } from "@sentralbee/app-sdk";
+
 export interface MarkOrderPaidArgs {
   orderId: string;
   amountMinor: number;
@@ -12,27 +14,24 @@ export interface SentralbeeClient {
 }
 
 /**
- * The ONLY path this app mutates Sentralbee state: the public commerce API, authenticated as the
- * installed workspace with that install's app api-key. `reference` = the Moniepoint txn id, so a
- * redelivered webhook is a no-op server-side too (the endpoint dedupes on it).
+ * The ONLY path this app mutates Sentralbee state: the public commerce API, authenticated as the installed
+ * workspace with that install's app api-key. Built on @sentralbee/app-sdk's `sentralbeeClient`; we go
+ * through its `request()` escape hatch (not the typed `markOrderPaid`) so we can attach Moniepoint
+ * reconciliation metadata — terminal serial, sender name — which the SDK's typed method intentionally
+ * omits. `reference` = the Moniepoint txn id, so a redelivered webhook is a no-op server-side too (the
+ * endpoint dedupes on it).
  */
 export function httpSentralbee(baseUrl: string, apiKey: string): SentralbeeClient {
+  const client = sentralbeeClient({ apiKey, baseUrl });
   return {
     async markOrderPaid(a) {
-      const res = await fetch(`${baseUrl.replace(/\/$/, "")}/v1/orders/${encodeURIComponent(a.orderId)}/payments`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-api-key": apiKey },
-        body: JSON.stringify({
-          amount: a.amountMinor,
-          currency: a.currency,
-          provider: a.provider ?? "moniepoint",
-          reference: a.reference,
-          metadata: a.metadata ?? {},
-        }),
+      await client.request("POST", `/v1/orders/${encodeURIComponent(a.orderId)}/payments`, {
+        amount: a.amountMinor,
+        currency: a.currency,
+        provider: a.provider ?? "moniepoint",
+        reference: a.reference,
+        metadata: a.metadata ?? {},
       });
-      if (res.status === 200 || res.status === 201) return; // 201 created; 200 idempotent replay
-      const body = await res.text().catch(() => "");
-      throw new Error(`sentralbee payment-write ${res.status}: ${body.slice(0, 200)}`);
     },
   };
 }

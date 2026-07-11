@@ -12,6 +12,7 @@
     "api": {
       "name": "@ss-moniepoint/api",
       "dependencies": {
+        "@sentralbee/app-sdk": "^0.1.0",
         "hono": "^4.6.0",
         "jose": "^5.9.6",
       },
@@ -331,6 +332,8 @@
     "@rollup/rollup-win32-x64-gnu": ["@rollup/rollup-win32-x64-gnu@4.62.2", "", { "os": "win32", "cpu": "x64" }, "sha512-T6xr6ucWSFto+VGajA8YH26LdpHRuP4YLHEKAtCWvJDOlnmWcDZVCI2Jmjr+IFHDlt2zRaTAKE4tfjTaWLgJBg=="],
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.62.2", "", { "os": "win32", "cpu": "x64" }, "sha512-BfzEnDJOt9T8M989/lA37EcJgat01wLRnoi5dQf3QzOH7jzpqTAzdDbVfRljVr5r+jzKqpbHeyOfAaXxAd0PAA=="],
+
+    "@sentralbee/app-sdk": ["@sentralbee/app-sdk@0.1.0", "", { "dependencies": { "jose": "^5.9.6" }, "peerDependencies": { "hono": ">=4", "react": ">=18" }, "optionalPeers": ["hono", "react"] }, "sha512-dNBMRX3WAiYGSvhVsdnZ+oDCADx/YPS71e+pEbaNToU9yxFC+5l+etPO6GTuHHGpeZXLOaNR4dkGr6gGeRK9tQ=="],
 
     "@ss-moniepoint/api": ["@ss-moniepoint/api@workspace:api"],
 

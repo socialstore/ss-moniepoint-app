@@ -6,14 +6,11 @@ import { app } from "../app";
 import { setMoniepointClient } from "../moniepoint/client";
 import { makeTestKeys, signProvision, signSession } from "../auth/testsign";
 import { _setPlatformKey } from "../auth/platform";
-import { importSPKI, type KeyLike } from "jose";
 
 let keys: Awaited<ReturnType<typeof makeTestKeys>>;
-let pubKey: KeyLike;
 
 beforeAll(async () => {
   keys = await makeTestKeys();
-  pubKey = await importSPKI(keys.publicKeyPem, "EdDSA");
   setMoniepointClient({
     createWebhookSubscription: async () => ({ subscriptionId: "sub", secret: "whsec" }),
     deleteWebhookSubscription: async () => {},
@@ -22,7 +19,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   setDb(memoryDb());
-  _setPlatformKey(pubKey);
+  _setPlatformKey(keys.publicKeyPem);
 });
 
 const H = { "content-type": "application/json" };

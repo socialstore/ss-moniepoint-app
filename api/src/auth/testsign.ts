@@ -5,6 +5,7 @@ import { exportSPKI, generateKeyPair, SignJWT, type KeyLike } from "jose";
 
 const ALG = "EdDSA";
 const AUDIENCE = "moniepoint-app";
+const ISSUER = "sentralbee-platform"; // the SDK verifier enforces iss — mint it exactly as the platform does
 
 export interface TestKeys {
   publicKeyPem: string;
@@ -19,10 +20,11 @@ export async function makeTestKeys(): Promise<TestKeys> {
 export function signSession(
   priv: KeyLike,
   workspace: string,
-  opts?: { scopes?: string[]; handle?: string; aud?: string; expSec?: number },
+  opts?: { scopes?: string[]; provider?: string; aud?: string; expSec?: number },
 ): Promise<string> {
-  return new SignJWT({ wid: workspace, purpose: "session", scopes: opts?.scopes ?? [], handle: opts?.handle })
+  return new SignJWT({ wid: workspace, purpose: "session", scopes: opts?.scopes ?? [], provider: opts?.provider })
     .setProtectedHeader({ alg: ALG })
+    .setIssuer(ISSUER)
     .setAudience(opts?.aud ?? AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(`${opts?.expSec ?? 300}s`)
@@ -36,6 +38,7 @@ export function signProvision(
 ): Promise<string> {
   return new SignJWT({ wid: workspace, purpose: "provision", scopes: opts?.scopes ?? [] })
     .setProtectedHeader({ alg: ALG })
+    .setIssuer(ISSUER)
     .setAudience(opts?.aud ?? AUDIENCE)
     .setJti(opts?.jti ?? crypto.randomUUID())
     .setIssuedAt()

@@ -7,14 +7,11 @@ import { app } from "../app";
 import { setMoniepointClient } from "../moniepoint/client";
 import { makeTestKeys, signProvision, signSession } from "./testsign";
 import { _setPlatformKey, verifyProvision, verifySession } from "./platform";
-import { importSPKI, type KeyLike } from "jose";
 
 let keys: Awaited<ReturnType<typeof makeTestKeys>>;
-let pubKey: KeyLike;
 
 beforeAll(async () => {
   keys = await makeTestKeys();
-  pubKey = await importSPKI(keys.publicKeyPem, "EdDSA");
   // Moniepoint client is stubbed so /connect never reaches the network.
   setMoniepointClient({
     createWebhookSubscription: async () => ({ subscriptionId: "sub_test", secret: "whsec_test" }),
@@ -26,7 +23,7 @@ let db: Database;
 beforeEach(() => {
   db = memoryDb();
   setDb(db);
-  _setPlatformKey(pubKey); // inject the platform public key (no env needed)
+  _setPlatformKey(keys.publicKeyPem); // inject the platform public key PEM (no env needed)
 });
 
 const H = { "content-type": "application/json" };
