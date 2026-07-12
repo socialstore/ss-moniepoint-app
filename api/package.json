@@ -10,7 +10,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@sentralbee/app-sdk": "^0.2.0",
+    "@sentralbee/app-sdk": "^0.2.2",
     "hono": "^4.6.0",
     "jose": "^5.9.6"
   },
